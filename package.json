@@ -1,0 +1,11 @@
+{
+  "name": "@zero65/gcp",
+  "version": "1.0.0",
+  "description": "GCP Utils",
+  "main": "index.js",
+  "scripts": {},
+  "author": "Zero65 Technologies Pvt. Ltd.",
+  "dependencies": {
+    "@google-cloud/firestore": "^6.4.1"
+  }
+}
