@@ -18,6 +18,7 @@ exports.init = (config) => {
   if(config.service) {
 
     // https://axios-http.com/docs/req_config
+    // https://axios-http.com/docs/res_schema
 
     const axios = require('axios');
 
@@ -79,7 +80,7 @@ exports.init = (config) => {
         let { method, path } = entry[1];
 
         if(method == 'GET')
-          exports.Service[service][api] = async (params, headers) => await doGet(path, baseURL, params, headers);
+          exports.Service[service][api] = async (params, req, res) => await doGet(path, baseURL, params, req, res);
 
       });
 
