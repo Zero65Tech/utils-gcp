@@ -45,18 +45,17 @@ exports.init = (config) => {
 
       let options = {
         baseURL: baseURL,
-        headers: {},
+        headers: { Authorization: 'Bearer ' + token },
         params: params,
         httpsAgent: httpsAgent,
       };
 
       if(req && res) {
-        options.headers = req.headers;
+        if(req.headers['if-none-match'])
+          options.headers['if-none-match'] = req.headers['if-none-match'];
         options.responseType = 'stream';
         options.validateStatus = status => true;
       }
-
-      options.headers['Authorization'] = 'Bearer ' + token;
 
       let response = await axios.get(path, options);
 
