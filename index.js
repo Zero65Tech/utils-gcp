@@ -17,19 +17,53 @@ exports.init = (config) => {
 
   if(config.service) {
 
+    // https://axios-http.com/docs/req_config
+
     const axios = require('axios');
+
+    const http = require('http');
     const https = require('https');
+
+    const httpAgent = new http.Agent({ keepAlive: true, maxSockets: Infinity });
+    const httpsAgent = new https.Agent({ keepAlive: true, maxSockets: Infinity });
 
     exports.Service = {};
 
-    let doGet = async (path, baseURL, params, headers) => {
-      let ret = await axios.get(path, {
+    let doGet = async (path, baseURL, params, req, res) => {
+
+      let token = (await axios.get(
+        '/computeMetadata/v1/instance/service-accounts/default/identity',
+        {
+          baseURL: 'http://metadata.google.internal',
+          headers: { 'Metadata-Flavor': 'Google' },
+          params: { 'audience': baseURL },
+          responseType: 'text',
+          httpAgent: httpAgent,
+        }
+      )).data;
+
+      let options = {
         baseURL: baseURL,
-        headers: headers,
+        headers: {},
         params: params,
-        httpsAgent: new https.Agent({ keepAlive: true, maxSockets: Infinity }),
-      });
-      return ret.data;
+        httpsAgent: httpsAgent,
+      };
+
+      if(req && res) {
+        options.headers = req.headers;
+        options.responseType = 'stream';
+        options.validateStatus = status => true;
+      }
+
+      options.headers['Authorization'] = 'Bearer ' + token;
+
+      let response = await axios.get(path, options);
+
+      if(req && res)
+        response.data.pipe(res.status(response.status).set(response.headers));
+      else
+        return response.data;
+
     }
 
     Object.entries(config.service).forEach(entry => {
