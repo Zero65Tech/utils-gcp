@@ -1,4 +1,4 @@
-exports.init = (config) => {
+exports.init = async (config) => {
 
 
   if(config.firestore) {
@@ -17,37 +17,11 @@ exports.init = (config) => {
 
   if(config.service) {
 
-    // https://axios-http.com/docs/req_config
-    // https://axios-http.com/docs/res_schema
-
-    const axios = require('axios');
-
-    const http = require('http');
-    const https = require('https');
-
-    const httpAgent = new http.Agent({ keepAlive: true, maxSockets: Infinity });
-    const httpsAgent = new https.Agent({ keepAlive: true, maxSockets: Infinity });
-
-    exports.Service = {};
-
-    let doGet = async (path, baseURL, params, req, res) => {
-
-      let token = (await axios.get(
-        '/computeMetadata/v1/instance/service-accounts/default/identity',
-        {
-          baseURL: 'http://metadata.google.internal',
-          headers: { 'Metadata-Flavor': 'Google' },
-          params: { 'audience': baseURL },
-          responseType: 'text',
-          httpAgent: httpAgent,
-        }
-      )).data;
+    let doGet = async (client, path, baseURL, params, req, res) => {
 
       let options = {
         baseURL: baseURL,
-        headers: { Authorization: 'Bearer ' + token },
         params: params,
-        httpsAgent: httpsAgent,
       };
 
       if(req && res) {
@@ -55,21 +29,68 @@ exports.init = (config) => {
           options.headers['if-none-match'] = req.headers['if-none-match'];
         options.responseType = 'stream';
         options.validateStatus = status => true;
-      }
-
-      let response = await axios.get(path, options);
-
-      if(req && res)
-        response.data.pipe(res.status(response.status).set(response.headers));
-      else
+        let response = await client.get(path, options);
+        response.data.pipe(res.status(response.status).set(response.headers));  
+      } else {
+        let response = await client.get(path, options);
         return response.data;
+      }
+  
+    }
+
+    // https://axios-http.com/docs/req_config
+    // https://axios-http.com/docs/res_schema
+
+    let axios = undefined;
+    let auth = undefined;
+    let targetClient = undefined;
+
+    if(process.env.ENV == 'test') { // Development / Testing
+
+      axios = require('axios');
+      let https = require('https');
+
+      axios.defaults.httpsAgent = new https.Agent({ keepAlive: true, maxSockets: Infinity });
+      if(fs.existsSync(process.cwd() + '/.session'))
+        axios.defaults.headers.common['Cookie'] = 'sessionId=' + require(fs.existsSync(process.cwd() + '/.session')).id;
+
+    } else if(process.env.GOOGLE_SERVICE_ACCOUNT) { // Google Cloud Build
+
+      axios = require('axios');
+      let https = require('https');
+      let { GoogleAuth, Impersonated } = require('google-auth-library');
+
+      axios.defaults.httpsAgent = new https.Agent({ keepAlive: true, maxSockets: Infinity });
+      auth = new GoogleAuth();
+      targetClient = new Impersonated({
+        sourceClient: await auth.getClient(),
+        targetPrincipal: process.env.GOOGLE_SERVICE_ACCOUNT,
+        targetScopes: [],
+        lifetime: 3600, // 1hr
+      });
+
+    } else { // Google Cloud Run
+
+      let { GoogleAuth } = require('google-auth-library');
+
+      auth = new GoogleAuth();
 
     }
 
-    Object.entries(config.service).forEach(entry => {
+    exports.Service = {};
+
+    Object.entries(config.service).forEach(async entry => {
 
       let service = entry[0];
       let { baseURL, apis } = entry[1];
+
+      let client = undefined;
+      if(process.env.ENV == 'test') // Development / Testing
+        client = axios;
+      else if(process.env.GOOGLE_SERVICE_ACCOUNT) // Google Cloud Build
+        client = axios.create({ headers: { 'Authorization': await targetClient.fetchIdToken(baseURL) } });
+      else // Google Cloud Run
+        client = await auth.getIdTokenClient(baseURL);
 
       exports.Service[service] = {};
 
@@ -79,7 +100,7 @@ exports.init = (config) => {
         let { method, path } = entry[1];
 
         if(method == 'GET')
-          exports.Service[service][api] = async (params, req, res) => await doGet(path, baseURL, params, req, res);
+          exports.Service[service][api] = async (params, req, res) => await doGet(client, path, baseURL, params, req, res);
 
       });
 
