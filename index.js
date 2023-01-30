@@ -80,10 +80,9 @@ exports.init = async (config) => {
 
     exports.Service = {};
 
-    Object.entries(config.service).forEach(async entry => {
+    for(let service in config.service) {
 
-      let service = entry[0];
-      let { baseURL, apis } = entry[1];
+      let { baseURL, apis } = config.service[service];
 
       let client = undefined;
       if(process.env.ENV == 'test') // Development / Testing
@@ -95,17 +94,16 @@ exports.init = async (config) => {
 
       exports.Service[service] = {};
 
-      Object.entries(apis).forEach(entry => {
+      for(let api of apis) {
 
-        let api = entry[0];
-        let { method, path } = entry[1];
+        let { method, path } = apis[api];
 
         if(method == 'GET')
           exports.Service[service][api] = async (params, req, res) => await doGet(client, path, baseURL, params, req, res);
 
-      });
+      }
 
-    });
+    }
 
   }
 
