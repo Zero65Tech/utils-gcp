@@ -47,12 +47,13 @@ exports.init = async (config) => {
 
     if(process.env.ENV == 'test') { // Development / Testing
 
+      const fs = require('fs');
       axios = require('axios');
       let https = require('https');
 
       axios.defaults.httpsAgent = new https.Agent({ keepAlive: true, maxSockets: Infinity });
       if(fs.existsSync(process.cwd() + '/.session'))
-        axios.defaults.headers.common['Cookie'] = 'sessionId=' + require(fs.existsSync(process.cwd() + '/.session')).id;
+        axios.defaults.headers.common['Cookie'] = 'sessionId=' + JSON.parse(await fs.promises.readFile(process.cwd() + '/.session')).id;
 
     } else if(process.env.GOOGLE_SERVICE_ACCOUNT) { // Google Cloud Build
 
