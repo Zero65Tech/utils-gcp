@@ -88,7 +88,7 @@ exports.init = async (config) => {
       if(process.env.ENV == 'test') // Development / Testing
         client = axios;
       else if(process.env.GOOGLE_SERVICE_ACCOUNT) // Google Cloud Build
-        client = axios.create({ headers: { 'Authorization': await targetClient.fetchIdToken(baseURL) } });
+        client = axios.create({ headers: { 'Authorization': 'Bearer ' + await targetClient.fetchIdToken(baseURL) } });
       else // Google Cloud Run
         client = await auth.getIdTokenClient(baseURL);
 

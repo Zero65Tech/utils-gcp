@@ -1,6 +1,6 @@
 {
   "name": "@zero65/gcp",
-  "version": "1.1.8",
+  "version": "1.1.9",
   "description": "GCP Utils",
   "main": "index.js",
   "scripts": {},
