@@ -94,7 +94,7 @@ exports.init = async (config) => {
 
       exports.Service[service] = {};
 
-      for(let api of apis) {
+      for(let api in apis) {
 
         let { method, path } = apis[api];
 
