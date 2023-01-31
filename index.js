@@ -26,11 +26,14 @@ exports.init = async (config) => {
         url: url,
         params: params,
         agent: httpsAgent,
+        headers: {
+          'User-Agent': process.env.ENV + '/' + (process.env.K_REVISION || process.env.USER || process.env.HOSTNAME)
+        }
       };
 
       if(req && res) {
         if(req.headers['if-none-match'])
-          options.headers['if-none-match'] = req.headers['if-none-match'];
+          options.headers['If-None-Match'] = req.headers['if-none-match'];
         options.responseType = 'stream';
         options.validateStatus = status => true;
         let response = await client.request(options);
@@ -87,16 +90,18 @@ exports.init = async (config) => {
         }) : gaxios;
       else if(process.env.GOOGLE_SERVICE_ACCOUNT) // Google Cloud Build
         client = new gaxios.Gaxios({
-          headers: { 'Authorization': 'Bearer ' + await targetClient.fetchIdToken(baseURL) }
+          headers: { 'Authorization': 'Bearer ' + await auth.fetchIdToken(baseURL) }
         });
       else // Google Cloud Run
         client = await auth.getIdTokenClient(baseURL);
 
       exports.Service[service] = {};
 
-      for(let api in apis)
+      for(let api in apis) {
+        let { method, path } = apis[api];
         if(method == 'GET')
           exports.Service[service][api] = async (params, req, res) => await doGet(client, baseURL + path, params, req, res);
+      }
 
     }
 
