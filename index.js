@@ -17,11 +17,15 @@ exports.init = async (config) => {
 
   if(config.service) {
 
-    let doGet = async (client, path, baseURL, params, req, res) => {
+    let https = require('https');
+    let httpsAgent = new https.Agent({ keepAlive: true, maxSockets: Infinity });
+
+    let doGet = async (client, url, params, req, res) => {
 
       let options = {
-        baseURL: baseURL,
+        url: url,
         params: params,
+        agent: httpsAgent,
       };
 
       if(req && res) {
@@ -29,42 +33,31 @@ exports.init = async (config) => {
           options.headers['if-none-match'] = req.headers['if-none-match'];
         options.responseType = 'stream';
         options.validateStatus = status => true;
-        let response = await client.get(path, options);
+        let response = await client.request(options);
         response.data.pipe(res.status(response.status).set(response.headers));  
       } else {
-        let response = await client.get(path, options);
+        let response = await client.request(options);
         return response.data;
       }
   
     }
 
-    // https://axios-http.com/docs/req_config
-    // https://axios-http.com/docs/res_schema
+    // https://www.npmjs.com/package/google-auth-library
 
-    let axios = undefined;
+    let session = undefined;
     let auth = undefined;
-    let targetClient = undefined;
 
     if(process.env.ENV == 'test') { // Development / Testing
 
-      const fs = require('fs');
-      axios = require('axios');
-      let https = require('https');
-
-      axios.defaults.httpsAgent = new https.Agent({ keepAlive: true, maxSockets: Infinity });
+      let fs = require('fs');
       if(fs.existsSync(process.cwd() + '/.session'))
-        axios.defaults.headers.common['Cookie'] = 'sessionId=' + JSON.parse(await fs.promises.readFile(process.cwd() + '/.session')).id;
+        session = JSON.parse(await fs.promises.readFile(process.cwd() + '/.session'));
 
     } else if(process.env.GOOGLE_SERVICE_ACCOUNT) { // Google Cloud Build
 
-      axios = require('axios');
-      let https = require('https');
       let { GoogleAuth, Impersonated } = require('google-auth-library');
-
-      axios.defaults.httpsAgent = new https.Agent({ keepAlive: true, maxSockets: Infinity });
-      auth = new GoogleAuth();
-      targetClient = new Impersonated({
-        sourceClient: await auth.getClient(),
+      auth = new Impersonated({
+        sourceClient: await (new GoogleAuth()).getClient(),
         targetPrincipal: process.env.GOOGLE_SERVICE_ACCOUNT,
         targetScopes: [],
         lifetime: 3600, // 1hr
@@ -73,10 +66,13 @@ exports.init = async (config) => {
     } else { // Google Cloud Run
 
       let { GoogleAuth } = require('google-auth-library');
-
       auth = new GoogleAuth();
 
     }
+
+    // https://github.com/googleapis/gaxios/blob/main/README.md
+
+    let gaxios = require('gaxios');
 
     exports.Service = {};
 
@@ -86,22 +82,21 @@ exports.init = async (config) => {
 
       let client = undefined;
       if(process.env.ENV == 'test') // Development / Testing
-        client = axios;
+        client = session ? new gaxios.Gaxios({
+          headers: { 'Cookie': 'sessionId=' + session.id }
+        }) : gaxios;
       else if(process.env.GOOGLE_SERVICE_ACCOUNT) // Google Cloud Build
-        client = axios.create({ headers: { 'Authorization': 'Bearer ' + await targetClient.fetchIdToken(baseURL) } });
+        client = new gaxios.Gaxios({
+          headers: { 'Authorization': 'Bearer ' + await targetClient.fetchIdToken(baseURL) }
+        });
       else // Google Cloud Run
         client = await auth.getIdTokenClient(baseURL);
 
       exports.Service[service] = {};
 
-      for(let api in apis) {
-
-        let { method, path } = apis[api];
-
+      for(let api in apis)
         if(method == 'GET')
-          exports.Service[service][api] = async (params, req, res) => await doGet(client, path, baseURL, params, req, res);
-
-      }
+          exports.Service[service][api] = async (params, req, res) => await doGet(client, baseURL + path, params, req, res);
 
     }
 
