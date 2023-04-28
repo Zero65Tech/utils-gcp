@@ -8,7 +8,7 @@ exports.init = async (config) => {
       FieldValue: firestore.FieldValue
     };
 
-    let Firestore = new firestore.Firestore();
+    let Firestore = new firestore.Firestore({ projectId: config.firestore.project });
     for(let collection of config.firestore.collections)
       exports.Firestore[collection] = Firestore.collection(collection);
 
