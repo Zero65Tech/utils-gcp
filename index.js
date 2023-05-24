@@ -97,10 +97,17 @@ exports.init = async (config) => {
 
       exports.Service[service] = {};
 
-      for(let api in apis) {
-        let { method, path } = apis[api];
-        if(method == 'GET')
-          exports.Service[service][api] = async (params, req, res) => await doGet(client, baseURL + path, params, req, res);
+      if(apis) {
+        for(let api in apis) {
+          let { method, path } = apis[api];
+          if(method == 'GET')
+            exports.Service[service][api] = async (params, req, res) => await doGet(client, baseURL + path, params, req, res);
+        }
+      } else {
+        exports.Service[service].pipe = async (req, res) => {
+          if(req.method == 'GET')
+            await doGet(client, baseURL + req.path, req.query, req, res)
+        }
       }
 
     }
