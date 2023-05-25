@@ -20,15 +20,11 @@ exports.init = async (config) => {
     let https = require('https');
     let httpsAgent = new https.Agent({ keepAlive: true, maxSockets: Infinity });
 
-    let doGet = async (client, url, params, req, res) => {
+    let doRequest = async (client, options, req, res) => {
 
-      let options = {
-        url: url,
-        params: params,
-        agent: httpsAgent,
-        headers: {
-          'User-Agent': process.env.ENV + '/' + (process.env.K_REVISION || process.env.USER || process.env.HOSTNAME)
-        }
+      options.agent = httpsAgent;
+      options.headers = {
+        'User-Agent': process.env.ENV + '/' + (process.env.K_REVISION || process.env.USER || process.env.HOSTNAME)
       };
 
       if(req && res) {
@@ -100,13 +96,23 @@ exports.init = async (config) => {
       if(apis) {
         for(let api in apis) {
           let { method, path } = apis[api];
-          if(method == 'GET')
-            exports.Service[service][api] = async (params, req, res) => await doGet(client, baseURL + path, params, req, res);
+          exports.Service[service][api] = async (data, req, res) => {
+            let options = { method, url: baseURL + path };
+            if(method == 'GET')
+              options.params = data;
+            else if(method == 'POST')
+              options.data = data;
+            return await doRequest(client, options, req, res);
+          };
         }
       } else {
         exports.Service[service].pipe = async (req, res) => {
+          let options = { method: req.method, url: baseURL + req.path };
           if(req.method == 'GET')
-            await doGet(client, baseURL + req.path, req.query, req, res)
+            options.params = req.query;
+          else if(req.method == 'POST')
+            options.data = req.body;
+          return await doRequest(client, options, req, res);
         }
       }
 
