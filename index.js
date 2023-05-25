@@ -97,7 +97,7 @@ exports.init = async (config) => {
         for(let api in apis) {
           let { method, path } = apis[api];
           exports.Service[service][api] = async (data, req, res) => {
-            let options = { method, url: baseURL + path };
+            let options = { url: baseURL + path, method };
             if(method == 'GET')
               options.params = data;
             else if(method == 'POST')
@@ -107,13 +107,13 @@ exports.init = async (config) => {
         }
       } else {
         exports.Service[service].pipe = async (req, res) => {
-          let options = { method: req.method, url: baseURL + req.path };
+          let options = { url: baseURL + req.path, method: req.method };
           if(req.method == 'GET')
             options.params = req.query;
           else if(req.method == 'POST')
             options.data = req.body;
           return await doRequest(client, options, req, res);
-        }
+        };
       }
 
     }
