@@ -97,6 +97,7 @@ exports.init = async (config) => {
         for(let api in apis) {
           let { method, path } = apis[api];
           exports.Service[service][api] = async (data, req, res) => {
+            // console.log(`${ method }: ${ baseURL }${ path } ${ JSON.stringify(data) }`);
             let options = { url: baseURL + path, method };
             if(method == 'GET')
               options.params = data;
@@ -107,6 +108,7 @@ exports.init = async (config) => {
         }
       } else {
         exports.Service[service].pipe = async (req, res) => {
+          // console.log(`${ req.method }: ${ baseURL }${ req.path } ${ JSON.stringify(req.query || req.body) }`);
           let options = { url: baseURL + req.path, method: req.method };
           if(req.method == 'GET')
             options.params = req.query;
