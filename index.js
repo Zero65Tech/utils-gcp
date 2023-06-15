@@ -3,12 +3,14 @@ exports.init = async (config) => {
 
   if(config.firestore) {
 
-    const firestore = require('@google-cloud/firestore');
+    let firestore = require('@google-cloud/firestore');
+    let Firestore = new firestore.Firestore({ projectId: config.firestore.project });
+
     exports.Firestore = {
-      FieldValue: firestore.FieldValue
+      FieldValue: firestore.FieldValue,
+      batch: Firestore.batch
     };
 
-    let Firestore = new firestore.Firestore({ projectId: config.firestore.project });
     for(let collection of config.firestore.collections)
       exports.Firestore[collection] = Firestore.collection(collection);
 
