@@ -8,7 +8,7 @@ exports.init = async (config) => {
 
     exports.Firestore = {
       FieldValue: firestore.FieldValue,
-      batch: Firestore.batch
+      batch: () => Firestore.batch()
     };
 
     for(let collection of config.firestore.collections)
