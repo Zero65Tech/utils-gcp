@@ -8,7 +8,7 @@ exports.init = async (config) => {
 
     exports.Firestore = {
       FieldValue: firestore.FieldValue,
-      FieldPath: firestore.FieldPath,
+      getAll: (...refs) => Firestore.getAll(...refs),
       batch: () => Firestore.batch()
     };
 
