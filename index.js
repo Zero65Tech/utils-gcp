@@ -27,7 +27,7 @@ exports.init = async (config) => {
 
       options.agent = httpsAgent;
       options.headers = {
-        'User-Agent': process.env.ENV + '/' + (process.env.K_REVISION || process.env.USER || process.env.HOSTNAME)
+        'User-Agent': process.env.STAGE + '/' + (process.env.K_REVISION || process.env.USER || process.env.HOSTNAME)
       };
 
       if(req && res) {
@@ -49,7 +49,7 @@ exports.init = async (config) => {
     let session = undefined;
     let auth = undefined;
 
-    if(process.env.ENV == 'test') { // Development / Testing
+    if(process.env.STAGE == 'alpha') { // Development / Testing
 
       let fs = require('fs');
       if(fs.existsSync(process.cwd() + '/.session'))
@@ -83,7 +83,7 @@ exports.init = async (config) => {
       let { baseURL, apis } = config.service[service];
 
       let client = undefined;
-      if(process.env.ENV == 'test') // Development / Testing
+      if(process.env.STAGE == 'alpha') // Development / Testing
         client = session ? new gaxios.Gaxios({
           headers: { 'Cookie': 'sessionId=' + session.id }
         }) : gaxios;
